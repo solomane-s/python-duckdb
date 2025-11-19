@@ -395,6 +395,12 @@ def create_structure(base_path, struct, with_sample=False):
         if isinstance(value, list):
             dir_path = base_path / key
             dir_path.mkdir(parents=True, exist_ok=True)
+            
+            # Si la liste est vide (dossier vide), ajouter .gitkeep
+            if len(value) == 0:
+                gitkeep_path = dir_path / ".gitkeep"
+                gitkeep_path.touch()
+            
             for item in value:
                 item_path = dir_path / item
                 if "." in item:
@@ -415,6 +421,15 @@ def create_structure(base_path, struct, with_sample=False):
     if with_sample:
         sample_csv_path = base_path / "data" / "source" / "SAMPLE_DATA.csv"
         sample_csv_path.write_text(sample_csv_content, encoding='utf-8')
+    
+    # Parcourir tous les sous-dossiers créés et ajouter .gitkeep aux dossiers vides
+    for item in base_path.rglob('*'):
+        if item.is_dir():
+            # Vérifier si le dossier est vide (ne contient aucun fichier, seulement d'éventuels sous-dossiers vides)
+            contents = list(item.iterdir())
+            if len(contents) == 0:
+                gitkeep_path = item / ".gitkeep"
+                gitkeep_path.touch()
 
 # Création du projet
 if __name__ == "__main__":
