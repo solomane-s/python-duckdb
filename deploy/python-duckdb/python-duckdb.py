@@ -9,7 +9,7 @@ PROJECT_NAME = "python-duckdb"
 
 structure = {
     "data": ["source", "processed", "final"],
-    "db": [],
+    "db": ["database.duckdb"],
     "scripts": ["source.py", "transforming.py", "results.py"],
     "macro": ["process.py", "execution.log"],
     "README.md": None,
@@ -396,19 +396,27 @@ def create_structure(base_path, struct, with_sample=False):
             dir_path = base_path / key
             dir_path.mkdir(parents=True, exist_ok=True)
             
-            # Si la liste est vide (dossier vide), ajouter .gitkeep
-            if len(value) == 0:
-                gitkeep_path = dir_path / ".gitkeep"
-                gitkeep_path.touch()
+            # Ajouter .gitkeep dans tous les dossiers
+            gitkeep_path = dir_path / ".gitkeep"
+            gitkeep_path.touch()
             
             for item in value:
                 item_path = dir_path / item
                 if "." in item:
-                    item_path.touch()
-                    if item in templates:
-                        item_path.write_text(templates[item], encoding='utf-8')
+                    # Créer le fichier database.duckdb avec DuckDB
+                    if item == "database.duckdb":
+                        import duckdb
+                        conn = duckdb.connect(str(item_path))
+                        conn.close()
+                    else:
+                        item_path.touch()
+                        if item in templates:
+                            item_path.write_text(templates[item], encoding='utf-8')
                 else:
                     item_path.mkdir(exist_ok=True)
+                    # Ajouter .gitkeep dans les sous-dossiers
+                    sub_gitkeep = item_path / ".gitkeep"
+                    sub_gitkeep.touch()
         else:
             file_path = base_path / key
             file_path.touch()
@@ -422,14 +430,11 @@ def create_structure(base_path, struct, with_sample=False):
         sample_csv_path = base_path / "data" / "source" / "SAMPLE_DATA.csv"
         sample_csv_path.write_text(sample_csv_content, encoding='utf-8')
     
-    # Parcourir tous les sous-dossiers créés et ajouter .gitkeep aux dossiers vides
+    # Parcourir tous les dossiers créés et ajouter .gitkeep partout
     for item in base_path.rglob('*'):
         if item.is_dir():
-            # Vérifier si le dossier est vide (ne contient aucun fichier, seulement d'éventuels sous-dossiers vides)
-            contents = list(item.iterdir())
-            if len(contents) == 0:
-                gitkeep_path = item / ".gitkeep"
-                gitkeep_path.touch()
+            gitkeep_path = item / ".gitkeep"
+            gitkeep_path.touch()
 
 # Création du projet
 if __name__ == "__main__":
