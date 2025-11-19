@@ -1,0 +1,21 @@
+pays,continent,capitale,latitude,longitude,population,salaire_moyen
+France,Europe,Paris,48.8566,2.3522,67000000,3200
+Allemagne,Europe,Berlin,52.5200,13.4050,83000000,3500
+Espagne,Europe,Madrid,40.4168,-3.7038,47000000,2400
+Italie,Europe,Rome,41.9028,12.4964,60000000,2800
+Royaume-Uni,Europe,Londres,51.5074,-0.1278,67000000,3100
+États-Unis,Amérique du Nord,Washington,38.9072,-77.0369,331000000,5500
+Canada,Amérique du Nord,Ottawa,45.4215,-75.6972,38000000,4200
+Mexique,Amérique du Nord,Mexico,19.4326,-99.1332,126000000,1200
+Brésil,Amérique du Sud,Brasilia,-15.8267,-47.9218,213000000,1500
+Argentine,Amérique du Sud,Buenos Aires,-34.6037,-58.3816,45000000,1300
+Chine,Asie,Pékin,39.9042,116.4074,1400000000,1800
+Japon,Asie,Tokyo,35.6762,139.6503,126000000,3800
+Inde,Asie,New Delhi,28.6139,77.2090,1380000000,800
+Corée du Sud,Asie,Séoul,37.5665,126.9780,52000000,3000
+Australie,Océanie,Canberra,-35.2809,149.1300,25000000,4500
+Nouvelle-Zélande,Océanie,Wellington,-41.2865,174.7762,5000000,3700
+Afrique du Sud,Afrique,Pretoria,-25.7479,28.2293,59000000,1100
+Égypte,Afrique,Le Caire,30.0444,31.2357,102000000,600
+Nigeria,Afrique,Abuja,9.0765,7.3986,206000000,500
+Kenya,Afrique,Nairobi,-1.2864,36.8172,53000000,700
