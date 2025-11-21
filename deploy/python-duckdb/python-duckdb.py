@@ -2,6 +2,71 @@ import os
 from pathlib import Path
 import shutil
 import textwrap
+import subprocess
+import sys
+
+
+def check_and_install_dependencies():
+    """Vérifie et propose d'installer les dépendances manquantes"""
+    required_packages = {
+        'pandas': 'pandas',
+        'duckdb': 'duckdb',
+        'dagster': 'dagster',
+        'dagster-webserver': 'dagster-webserver'
+    }
+    
+    missing_packages = []
+    
+    # Vérifier chaque package
+    for package_name, pip_name in required_packages.items():
+        try:
+            __import__(package_name.replace('-', '_'))
+        except ImportError:
+            missing_packages.append(pip_name)
+    
+    if missing_packages:
+        print("=" * 60)
+        print("⚠️  DÉPENDANCES MANQUANTES")
+        print("=" * 60)
+        print()
+        print("Les packages suivants sont nécessaires mais non installés:")
+        for pkg in missing_packages:
+            print(f"  - {pkg}")
+        print()
+        
+        response = input("Voulez-vous les installer maintenant ? (o/n) : ").lower().strip()
+        
+        if response in ['o', 'oui', 'y', 'yes']:
+            print()
+            print("Installation en cours...")
+            print()
+            try:
+                subprocess.check_call([
+                    sys.executable, "-m", "pip", "install"
+                ] + missing_packages)
+                print()
+                print("✅ Installation terminée avec succès!")
+                print()
+            except subprocess.CalledProcessError:
+                print()
+                print("❌ Erreur lors de l'installation.")
+                print("Veuillez installer manuellement avec:")
+                print(f"  pip install {' '.join(missing_packages)}")
+                print()
+                sys.exit(1)
+        else:
+            print()
+            print("Installation annulée.")
+            print("Pour installer manuellement:")
+            print(f"  pip install {' '.join(missing_packages)}")
+            print()
+            print("Ou installez depuis requirements.txt:")
+            print("  pip install -r requirements.txt")
+            print()
+            sys.exit(1)
+        
+        print("=" * 60)
+        print()
 
 
 # Nom du projet et structure
@@ -43,6 +108,8 @@ Kenya,Afrique,Nairobi,-1.2864,36.8172,53000000,700
 
 requirements_content = """pandas
 duckdb
+dagster
+dagster-webserver
 """
 
 # Template pour arrêter Dagster
@@ -1001,6 +1068,9 @@ def create_structure(base_path, struct, with_sample=False):
 
 # Création du projet
 if __name__ == "__main__":
+    # Vérifier et installer les dépendances
+    check_and_install_dependencies()
+    
     base_path = Path.cwd() / PROJECT_NAME
     base_path.mkdir(exist_ok=True)
     
