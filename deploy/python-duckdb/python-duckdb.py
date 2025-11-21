@@ -11,7 +11,7 @@ structure = {
     "data": ["source", "processed", "final"],
     "db": ["database.duckdb"],
     "scripts": ["source.py", "transforming.py", "results.py"],
-    "macro": ["python-run-process.py", "execution.log"],
+    "macro": ["python-run-process.py", "dagster-run-process.py", "dagster-run-process-launch.py", "dagster-stop.py", "execution.log"],
     "README.md": None,
     "requirements.txt": None
 }
@@ -41,16 +41,455 @@ Kenya,Afrique,Nairobi,-1.2864,36.8172,53000000,700
 """
 
 
-# README.md
 requirements_content = """pandas
 duckdb
 """
 
-readme_content = """
+# Template pour arrêter Dagster
+dagster_stop_template = '''#!/usr/bin/env python3
+"""Script pour arreter tous les processus Dagster en cours"""
 
-- Ce projet permet de gérer un flux complet de données depuis l'import de fichiers sources.
-- Il inclut la transformation et l'agrégation des données pour obtenir des résultats prêts à l'analyse.
-- Les résultats finaux peuvent être exportés pour usage externe.
+import subprocess
+import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+PID_FILE = BASE_DIR / "dagster.pid"
+
+print("Arret de tous les processus Dagster...")
+
+try:
+    result = subprocess.run(["pkill", "-f", "dagster dev"], capture_output=True, text=True)
+    
+    # Supprimer le fichier PID s il existe
+    if PID_FILE.exists():
+        PID_FILE.unlink()
+    
+    if result.returncode == 0:
+        print("✓ Processus Dagster arretes avec succes.")
+    elif result.returncode == 1:
+        print("Aucun processus Dagster en cours d execution.")
+    else:
+        print(f"Erreur lors de l arret (code: {result.returncode})")
+        sys.exit(result.returncode)
+except FileNotFoundError:
+    print("Erreur: commande pkill non trouvee.")
+    sys.exit(1)
+except Exception as e:
+    print(f"Erreur inattendue: {e}")
+    sys.exit(1)
+'''
+
+# Template de lancement Dagster pour le projet principal
+dagster_launch_template_main = '''#!/usr/bin/env python3
+"""Script pour lancer Dagster avec le fichier d orchestration du projet principal"""
+
+import subprocess
+import sys
+import os
+from pathlib import Path
+
+# Chemin automatique vers le fichier dagster-run-process.py
+BASE_DIR = Path(__file__).resolve().parent
+DAGSTER_FILE = BASE_DIR / "dagster-run-process.py"
+LOG_FILE = BASE_DIR / "dagster.log"
+PID_FILE = BASE_DIR / "dagster.pid"
+
+if not DAGSTER_FILE.exists():
+    print(f"Erreur: Le fichier {DAGSTER_FILE} n existe pas")
+    sys.exit(1)
+
+# Verifier si Dagster est deja en cours
+if PID_FILE.exists():
+    try:
+        with open(PID_FILE, "r") as f:
+            old_pid = int(f.read().strip())
+        # Verifier si le processus existe
+        os.kill(old_pid, 0)
+        print(f"Dagster est deja en cours d execution (PID: {old_pid})")
+        print(f"Utilisez dagster-stop.py pour l arreter d abord.")
+        sys.exit(1)
+    except (OSError, ValueError):
+        # Le processus n existe plus, supprimer le fichier PID
+        PID_FILE.unlink()
+
+print(f"Lancement de Dagster avec: {DAGSTER_FILE}")
+print(f"Interface UI disponible sur: http://localhost:3000")
+print(f"Logs: {LOG_FILE}")
+print()
+print("Dagster sera lance en arriere-plan.")
+print("Utilisez dagster-stop.py pour l arreter.")
+print()
+
+try:
+    # Lancer en arriere-plan avec nohup
+    with open(LOG_FILE, "w") as log:
+        process = subprocess.Popen(
+            ["nohup", "dagster", "dev", "-f", str(DAGSTER_FILE)],
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True
+        )
+    
+    # Sauvegarder le PID
+    with open(PID_FILE, "w") as f:
+        f.write(str(process.pid))
+    
+    print(f"✓ Dagster lance avec succes (PID: {process.pid})")
+    print(f"✓ Vous pouvez fermer ce terminal en toute securite.")
+    
+except FileNotFoundError:
+    print("Erreur: dagster n est pas installe.")
+    print("Installez-le avec: pip install dagster dagster-webserver")
+    sys.exit(1)
+except Exception as e:
+    print(f"Erreur lors du lancement: {e}")
+    sys.exit(1)
+'''
+
+# Template de lancement Dagster pour le sample
+dagster_launch_template_sample = '''#!/usr/bin/env python3
+"""Script pour lancer Dagster avec le fichier d orchestration du sample"""
+
+import subprocess
+import sys
+import os
+from pathlib import Path
+
+# Chemin automatique vers le fichier dagster-run-process-sample.py
+BASE_DIR = Path(__file__).resolve().parent
+DAGSTER_FILE = BASE_DIR / "dagster-run-process-sample.py"
+LOG_FILE = BASE_DIR / "dagster.log"
+PID_FILE = BASE_DIR / "dagster.pid"
+
+if not DAGSTER_FILE.exists():
+    print(f"Erreur: Le fichier {DAGSTER_FILE} n existe pas")
+    sys.exit(1)
+
+# Verifier si Dagster est deja en cours
+if PID_FILE.exists():
+    try:
+        with open(PID_FILE, "r") as f:
+            old_pid = int(f.read().strip())
+        # Verifier si le processus existe
+        os.kill(old_pid, 0)
+        print(f"Dagster est deja en cours d execution (PID: {old_pid})")
+        print(f"Utilisez dagster-stop.py pour l arreter d abord.")
+        sys.exit(1)
+    except (OSError, ValueError):
+        # Le processus n existe plus, supprimer le fichier PID
+        PID_FILE.unlink()
+
+print(f"Lancement de Dagster avec: {DAGSTER_FILE}")
+print(f"Interface UI disponible sur: http://localhost:3001")
+print(f"Logs: {LOG_FILE}")
+print()
+print("Dagster sera lance en arriere-plan (port 3001).")
+print("Utilisez dagster-stop.py pour l arreter.")
+print()
+
+try:
+    # Lancer en arriere-plan avec nohup sur le port 3001
+    with open(LOG_FILE, "w") as log:
+        process = subprocess.Popen(
+            ["nohup", "dagster", "dev", "-f", str(DAGSTER_FILE), "--port", "3001"],
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True
+        )
+    
+    # Sauvegarder le PID
+    with open(PID_FILE, "w") as f:
+        f.write(str(process.pid))
+    
+    print(f"✓ Dagster lance avec succes (PID: {process.pid})")
+    print(f"✓ Vous pouvez fermer ce terminal en toute securite.")
+    
+except FileNotFoundError:
+    print("Erreur: dagster n est pas installe.")
+    print("Installez-le avec: pip install dagster dagster-webserver")
+    sys.exit(1)
+except Exception as e:
+    print(f"Erreur lors du lancement: {e}")
+    sys.exit(1)
+'''
+
+# Template Dagster pour le projet principal
+dagster_template_main = '''"""
+Orchestration Dagster pour le pipeline python-duckdb principal
+Lance le processus toutes les 5 minutes
+"""
+
+from pathlib import Path
+import sys
+from datetime import datetime
+
+from dagster import (
+    asset,
+    define_asset_job,
+    ScheduleDefinition,
+    Definitions,
+    AssetExecutionContext,
+)
+
+# Chemin de base
+BASE_DIR = Path(__file__).resolve().parent
+SCRIPTS_DIR = BASE_DIR / "scripts"
+
+
+@asset(group_name="main_pipeline")
+def import_data(context: AssetExecutionContext) -> dict:
+    """Import des données sources vers DuckDB"""
+    context.log.info("Début de l'import des données")
+    
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    
+    try:
+        from source import import_data as do_import
+        do_import()
+        context.log.info("Import terminé avec succès")
+        return {"status": "success", "timestamp": datetime.now().isoformat()}
+    except Exception as e:
+        context.log.error(f"Erreur lors de l'import: {e}")
+        raise
+    finally:
+        if str(SCRIPTS_DIR) in sys.path:
+            sys.path.remove(str(SCRIPTS_DIR))
+
+
+@asset(group_name="main_pipeline", deps=[import_data])
+def transform_data(context: AssetExecutionContext) -> dict:
+    """Transformation des données"""
+    context.log.info("Début de la transformation")
+    
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    
+    try:
+        from transforming import transform_data as do_transform
+        do_transform()
+        context.log.info("Transformation terminée avec succès")
+        return {"status": "success", "timestamp": datetime.now().isoformat()}
+    except Exception as e:
+        context.log.error(f"Erreur lors de la transformation: {e}")
+        raise
+    finally:
+        if str(SCRIPTS_DIR) in sys.path:
+            sys.path.remove(str(SCRIPTS_DIR))
+
+
+@asset(group_name="main_pipeline", deps=[transform_data])
+def export_results(context: AssetExecutionContext) -> dict:
+    """Export des résultats finaux"""
+    context.log.info("Début de l'export")
+    
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    
+    try:
+        from results import export_results as do_export
+        do_export()
+        context.log.info("Export terminé avec succès")
+        return {"status": "success", "timestamp": datetime.now().isoformat()}
+    except Exception as e:
+        context.log.error(f"Erreur lors de l'export: {e}")
+        raise
+    finally:
+        if str(SCRIPTS_DIR) in sys.path:
+            sys.path.remove(str(SCRIPTS_DIR))
+
+
+# Job principal
+main_job = define_asset_job(
+    name="main_pipeline_job",
+    selection=[import_data, transform_data, export_results],
+    description="Pipeline complet ETL principal"
+)
+
+# Schedule toutes les 5 minutes
+main_schedule = ScheduleDefinition(
+    name="main_every_5min",
+    job=main_job,
+    cron_schedule="*/5 * * * *",
+    description="Exécute le pipeline toutes les 5 minutes"
+)
+
+# Définitions Dagster
+defs = Definitions(
+    assets=[import_data, transform_data, export_results],
+    jobs=[main_job],
+    schedules=[main_schedule],
+)
+
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("DAGSTER - Pipeline Principal")
+    print("=" * 60)
+    print()
+    print("Lancer l'interface web:")
+    print("  dagster dev -f dagster-run-process.py")
+    print()
+    print("UI: http://localhost:3000")
+    print()
+    print("Job: main_pipeline_job")
+    print("Schedule: main_every_5min (toutes les 5 minutes)")
+    print()
+    print("=" * 60)
+'''
+
+# Template Dagster pour le sample
+dagster_template_sample_file = '''"""
+Orchestration Dagster pour le pipeline python-duckdb sample
+Lance le processus toutes les 5 minutes
+"""
+
+from pathlib import Path
+import sys
+from datetime import datetime
+
+from dagster import (
+    asset,
+    define_asset_job,
+    ScheduleDefinition,
+    Definitions,
+    AssetExecutionContext,
+)
+
+# Chemin de base
+BASE_DIR = Path(__file__).resolve().parent
+SCRIPTS_DIR = BASE_DIR / "scripts"
+
+
+@asset(group_name="sample_pipeline")
+def sample_import_data(context: AssetExecutionContext) -> dict:
+    """Import des données sources vers DuckDB (sample)"""
+    context.log.info("Début de l'import des données (sample)")
+    
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    
+    try:
+        from source import import_data
+        import_data()
+        context.log.info("Import terminé avec succès (sample)")
+        return {"status": "success", "timestamp": datetime.now().isoformat()}
+    except Exception as e:
+        context.log.error(f"Erreur lors de l'import (sample): {e}")
+        raise
+    finally:
+        if str(SCRIPTS_DIR) in sys.path:
+            sys.path.remove(str(SCRIPTS_DIR))
+
+
+@asset(group_name="sample_pipeline", deps=[sample_import_data])
+def sample_transform_data(context: AssetExecutionContext) -> dict:
+    """Transformation des données (sample)"""
+    context.log.info("Début de la transformation (sample)")
+    
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    
+    try:
+        from transforming import transform_data
+        transform_data()
+        context.log.info("Transformation terminée avec succès (sample)")
+        return {"status": "success", "timestamp": datetime.now().isoformat()}
+    except Exception as e:
+        context.log.error(f"Erreur lors de la transformation (sample): {e}")
+        raise
+    finally:
+        if str(SCRIPTS_DIR) in sys.path:
+            sys.path.remove(str(SCRIPTS_DIR))
+
+
+@asset(group_name="sample_pipeline", deps=[sample_transform_data])
+def sample_export_results(context: AssetExecutionContext) -> dict:
+    """Export des résultats finaux (sample)"""
+    context.log.info("Début de l'export (sample)")
+    
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    
+    try:
+        from results import export_results
+        export_results()
+        context.log.info("Export terminé avec succès (sample)")
+        return {"status": "success", "timestamp": datetime.now().isoformat()}
+    except Exception as e:
+        context.log.error(f"Erreur lors de l'export (sample): {e}")
+        raise
+    finally:
+        if str(SCRIPTS_DIR) in sys.path:
+            sys.path.remove(str(SCRIPTS_DIR))
+
+
+# Job sample
+sample_job = define_asset_job(
+    name="sample_pipeline_job",
+    selection=[sample_import_data, sample_transform_data, sample_export_results],
+    description="Pipeline complet ETL sample"
+)
+
+# Schedule toutes les 5 minutes
+sample_schedule = ScheduleDefinition(
+    name="sample_every_5min",
+    job=sample_job,
+    cron_schedule="*/5 * * * *",
+    description="Exécute le pipeline sample toutes les 5 minutes"
+)
+
+# Définitions Dagster
+defs = Definitions(
+    assets=[sample_import_data, sample_transform_data, sample_export_results],
+    jobs=[sample_job],
+    schedules=[sample_schedule],
+)
+
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("DAGSTER - Pipeline Sample")
+    print("=" * 60)
+    print()
+    print("Lancer l'interface web:")
+    print("  dagster dev -f dagster-run-process-sample.py --port 3001")
+    print()
+    print("UI: http://localhost:3001")
+    print()
+    print("Job: sample_pipeline_job")
+    print("Schedule: sample_every_5min (toutes les 5 minutes)")
+    print()
+    print("=" * 60)
+'''
+
+readme_content = """
+# Python DuckDB - Pipeline de données orchestré
+
+Ce projet permet de gérer un flux complet de données depuis l'import de fichiers sources.
+Il inclut la transformation et l'agrégation des données pour obtenir des résultats prêts à l'analyse.
+Les résultats finaux peuvent être exportés pour usage externe.
+
+## Démarrage rapide
+
+### Exécution classique (manuelle)
+```bash
+cd macro/
+python3 python-run-process.py
+```
+
+### Orchestration avec Dagster
+```bash
+# Lancer l'interface web principale (port 3000)
+cd macro/
+python3 dagster-run-process-launch.py
+
+# Lancer l'exemple sample (port 3001)
+cd sample/macro/
+python3 dagster-run-process-sample-launch.py
+
+# Arrêter Dagster
+python3 dagster-stop.py
+```
+
+**Interfaces web:**
+- Principal: http://localhost:3000
+- Sample: http://localhost:3001
 
 ## Architecture du flux de données
 
@@ -79,12 +518,9 @@ readme_content = """
                            │  + DuckDB  │
                            │  (Engine)  │
                            └────────────┘
-
-Moteur de traitement: Python + Pandas + DuckDB
 ```
 
-
-## Structure du dossier
+## Structure du projet
 
 ```
 project/
@@ -101,16 +537,111 @@ project/
 │   ├── transforming.py     Script pour transformer et agréger les données
 │   └── results.py          Script pour générer et exporter les résultats finaux
 │
-├── macro/                  
-│   ├── python-run-process.py          Script principal qui lance import, transformation et export
-│   └── execution.log                  Fichier journal pour enregistrer les logs d'exécution
+├── macro/                  Scripts d'orchestration
+│   ├── python-run-process.py              Exécution classique du pipeline
+│   ├── dagster-run-process.py             Définition Dagster du pipeline
+│   ├── dagster-run-process-launch.py      Lancement de Dagster (port 3000)
+│   ├── dagster-stop.py                    Arrêt de tous les processus Dagster
+│   ├── dagster.log                        Logs Dagster
+│   ├── dagster.pid                        PID du processus Dagster
+│   └── execution.log                      Logs d'exécution du pipeline
 │
-├── sample/                 Dossier contenant un exemple complet de données et scripts
+├── sample/                 Dossier contenant un exemple complet avec données de test
+│   ├── data/
+│   │   └── source/
+│   │       └── SAMPLE_DATA.csv           Données d'exemple
+│   ├── db/
+│   │   └── database.duckdb
+│   ├── scripts/            Scripts fonctionnels pour l'exemple
+│   └── macro/
+│       ├── python-run-process-sample.py
+│       ├── dagster-run-process-sample.py
+│       └── dagster-run-process-sample-launch.py (port 3001)
 │
-├── requirements.txt        Fichier listant les dépendances du projet
-├── python-duckdb.py        Script pour créer toute la structure du projet
-└── README.md               Description des dossiers et fichiers du projet
+├── requirements.txt        Dépendances: pandas, duckdb, dagster, dagster-webserver
+├── python-duckdb.py        Générateur de structure de projet
+└── README.md               Cette documentation
 ```
+
+## Modes d'exécution
+
+### 1. Mode classique (python-run-process.py)
+Exécution directe et unique du pipeline:
+- Import des données
+- Transformation
+- Export des résultats
+- Logs dans `execution.log`
+
+### 2. Mode Dagster (orchestration)
+Exécution orchestrée avec interface web:
+- **Visualisation** du pipeline sous forme de graphe
+- **Scheduling** automatique toutes les 5 minutes
+- **Monitoring** en temps réel
+- **Historique** des exécutions
+- **Logs** centralisés
+
+#### Avantages de Dagster:
+- Interface graphique intuitive
+- Gestion des dépendances entre assets
+- Retry automatique en cas d'erreur
+- Métriques et observabilité
+- Exécution en arrière-plan
+
+## Scripts utilitaires
+
+### dagster-run-process-launch.py
+Lance Dagster en arrière-plan avec:
+- Détection de processus existant (évite les doublons)
+- Gestion du PID dans `dagster.pid`
+- Logs redirigés vers `dagster.log`
+- Survit à la fermeture du terminal
+
+### dagster-stop.py
+Arrête tous les processus Dagster:
+- Kill de tous les processus `dagster dev`
+- Nettoyage des fichiers PID
+- Vérification de l'arrêt complet
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+Dépendances:
+- `pandas` - Manipulation de données
+- `duckdb` - Base de données analytique
+- `dagster` - Framework d'orchestration
+- `dagster-webserver` - Interface web Dagster
+
+## Exemple avec données de test
+
+Le dossier `sample/` contient un exemple complet fonctionnel:
+
+```bash
+cd sample/macro/
+
+# Exécution classique
+python3 python-run-process-sample.py
+
+# Avec Dagster (port 3001)
+python3 dagster-run-process-sample-launch.py
+```
+
+Données d'exemple: `sample/data/source/SAMPLE_DATA.csv`
+
+## Ports réseau
+
+- **Principal**: Port 3000 (http://localhost:3000)
+- **Sample**: Port 3001 (http://localhost:3001)
+
+Les deux instances peuvent fonctionner simultanément sans conflit.
+
+## Logs
+
+- `macro/execution.log` - Logs du pipeline (import, transformation, export)
+- `macro/dagster.log` - Logs du serveur Dagster
+- `macro/dagster.pid` - PID du processus Dagster actif
 
 """
 
@@ -391,7 +922,7 @@ structure_sample = {
     "data": ["source", "processed", "final"],
     "db": ["database.duckdb"],
     "scripts": ["source.py", "transforming.py", "results.py"],
-    "macro": ["python-run-process-sample.py", "execution.log"],
+    "macro": ["python-run-process-sample.py", "dagster-run-process-sample.py", "dagster-run-process-sample-launch.py", "dagster-stop.py", "execution.log"],
     "README.md": None,
     "requirements.txt": None
 }
@@ -422,6 +953,28 @@ def create_structure(base_path, struct, with_sample=False):
                         item_path.touch()
                         if item in templates:
                             item_path.write_text(templates[item], encoding='utf-8')
+                    # Créer les fichiers Dagster dans macro/
+                    if item == "dagster-run-process.py":
+                        dagster_content = dagster_template_main
+                        item_path.write_text(dagster_content, encoding='utf-8')
+                    elif item == "dagster-run-process-sample.py":
+                        dagster_content = dagster_template_sample_file
+                        item_path.write_text(dagster_content, encoding='utf-8')
+                    elif item == "dagster-run-process-launch.py":
+                        # Template de lancement pour le projet principal
+                        item_path.write_text(dagster_launch_template_main, encoding='utf-8')
+                        # Rendre le fichier exécutable
+                        item_path.chmod(0o755)
+                    elif item == "dagster-run-process-sample-launch.py":
+                        # Template de lancement pour le sample
+                        item_path.write_text(dagster_launch_template_sample, encoding='utf-8')
+                        # Rendre le fichier exécutable
+                        item_path.chmod(0o755)
+                    elif item == "dagster-stop.py":
+                        # Template pour arrêter Dagster (même pour principal et sample)
+                        item_path.write_text(dagster_stop_template, encoding='utf-8')
+                        # Rendre le fichier exécutable
+                        item_path.chmod(0o755)
                 else:
                     item_path.mkdir(exist_ok=True)
                     # Ajouter .gitkeep dans les sous-dossiers
