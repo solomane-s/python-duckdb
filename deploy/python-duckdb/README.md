@@ -54,8 +54,8 @@ project/
 │   └── results.py          Script pour générer et exporter les résultats finaux
 │
 ├── macro/                  
-│   ├── process.py          Script principal qui lance import, transformation et export
-│   └── execution.log       Fichier journal pour enregistrer les logs d'exécution
+│   ├── python-run-process.py          Script principal qui lance import, transformation et export
+│   └── execution.log                  Fichier journal pour enregistrer les logs d'exécution
 │
 ├── sample/                 Dossier contenant un exemple complet de données et scripts
 │

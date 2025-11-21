@@ -11,7 +11,7 @@ structure = {
     "data": ["source", "processed", "final"],
     "db": ["database.duckdb"],
     "scripts": ["source.py", "transforming.py", "results.py"],
-    "macro": ["process.py", "execution.log"],
+    "macro": ["python-run-process.py", "execution.log"],
     "README.md": None,
     "requirements.txt": None
 }
@@ -102,8 +102,8 @@ project/
 │   └── results.py          Script pour générer et exporter les résultats finaux
 │
 ├── macro/                  
-│   ├── process.py          Script principal qui lance import, transformation et export
-│   └── execution.log       Fichier journal pour enregistrer les logs d'exécution
+│   ├── python-run-process.py          Script principal qui lance import, transformation et export
+│   └── execution.log                  Fichier journal pour enregistrer les logs d'exécution
 │
 ├── sample/                 Dossier contenant un exemple complet de données et scripts
 │
@@ -146,7 +146,7 @@ python_templates = {
             pass
         """),
     
-    "process.py": textwrap.dedent("""
+    "python-run-process.py": textwrap.dedent("""
         from datetime import datetime
         from pathlib import Path
         import logging
@@ -198,6 +198,55 @@ python_templates = {
 
 # Templates Python avec code complet pour le sample
 python_templates_sample = {
+    
+    "python-run-process-sample.py": textwrap.dedent("""
+        from datetime import datetime
+        from pathlib import Path
+        import logging
+        import sys
+
+        BASE_DIR = Path(__file__).resolve().parent.parent
+        SCRIPTS_DIR = BASE_DIR / "scripts"
+        sys.path.insert(0, str(SCRIPTS_DIR))
+
+        from source import import_data  # type: ignore
+        from transforming import transform_data  # type: ignore
+        from results import export_results  # type: ignore
+
+        LOG_PATH = BASE_DIR / "macro" / "execution.log"
+
+        logging.basicConfig(
+            filename=str(LOG_PATH),
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s"
+        )
+
+        logger = logging.getLogger(__name__)
+
+        def run_process():
+            start_time = datetime.now()
+
+            with open(LOG_PATH, "a") as f:
+                f.write("\\n")
+
+            logger.info("Début du process")
+
+            import_data()
+            transform_data()
+            export_results()
+
+            logger.info("Fin du process")
+            duration = datetime.now() - start_time
+            logger.info(f"Durée du process : {duration}")
+
+            with open(LOG_PATH, "a") as f:
+                f.write("\\n")
+
+            print(f"Process terminé {duration}")
+
+        if __name__ == "__main__":
+            run_process()
+        """),
     
     "source.py": textwrap.dedent("""
         from pathlib import Path
@@ -333,58 +382,19 @@ python_templates_sample = {
         if __name__ == "__main__":
             export_results()
         """),
-    
-    "process.py": textwrap.dedent("""
-        from datetime import datetime
-        from pathlib import Path
-        import logging
-        import sys
-
-        BASE_DIR = Path(__file__).resolve().parent.parent
-        SCRIPTS_DIR = BASE_DIR / "scripts"
-        sys.path.insert(0, str(SCRIPTS_DIR))
-
-        from source import import_data  # type: ignore
-        from transforming import transform_data  # type: ignore
-        from results import export_results  # type: ignore
-
-        LOG_PATH = BASE_DIR / "macro" / "execution.log"
-
-        logging.basicConfig(
-            filename=str(LOG_PATH),
-            level=logging.INFO,
-            format="%(asctime)s - %(levelname)s - %(message)s"
-        )
-
-        logger = logging.getLogger(__name__)
-
-        def run_process():
-            start_time = datetime.now()
-
-            with open(LOG_PATH, "a") as f:
-                f.write("\\n")
-
-            logger.info("Début du process")
-
-            import_data()
-            transform_data()
-            export_results()
-
-            logger.info("Fin du process")
-            duration = datetime.now() - start_time
-            logger.info(f"Durée du process : {duration}")
-
-            with open(LOG_PATH, "a") as f:
-                f.write("\\n")
-
-            print(f"Process terminé {duration}")
-
-        if __name__ == "__main__":
-            run_process()
-        """),
 }
 
 
+
+# Structure pour le sample (différente pour le fichier macro)
+structure_sample = {
+    "data": ["source", "processed", "final"],
+    "db": ["database.duckdb"],
+    "scripts": ["source.py", "transforming.py", "results.py"],
+    "macro": ["python-run-process-sample.py", "execution.log"],
+    "README.md": None,
+    "requirements.txt": None
+}
 
 # Fonction pour créer la structure du projet
 def create_structure(base_path, struct, with_sample=False):
@@ -447,7 +457,7 @@ if __name__ == "__main__":
     # Créer le sous-dossier sample avec l'exemple
     sample_path = base_path / "sample"
     sample_path.mkdir(exist_ok=True)
-    create_structure(sample_path, structure, with_sample=True)
+    create_structure(sample_path, structure_sample, with_sample=True)
     
     # Copier le script de génération
     current_file = Path(__file__).resolve()
