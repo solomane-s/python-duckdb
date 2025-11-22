@@ -24,7 +24,7 @@ if PID_FILE.exists():
         # Verifier si le processus existe
         os.kill(old_pid, 0)
         print(f"Dagster est deja en cours d execution (PID: {old_pid})")
-        print(f"Utilisez dagster-stop.py pour l arreter d abord.")
+        print(f"Utilisez dagster-run-process-stop.py pour l arreter d abord.")
         sys.exit(1)
     except (OSError, ValueError):
         # Le processus n existe plus, supprimer le fichier PID
@@ -35,14 +35,14 @@ print(f"Interface UI disponible sur: http://localhost:3000")
 print(f"Logs: {LOG_FILE}")
 print()
 print("Dagster sera lance en arriere-plan.")
-print("Utilisez dagster-stop.py pour l arreter.")
+print("Utilisez dagster-run-process-stop.py pour l arreter.")
 print()
 
 try:
     # Lancer en arriere-plan avec nohup
     with open(LOG_FILE, "w") as log:
         process = subprocess.Popen(
-            ["nohup", "dagster", "dev", "-f", str(DAGSTER_FILE)],
+            ["nohup", "dagster", "dev", "-f", str(DAGSTER_FILE), "--port", "3000"],
             stdout=log,
             stderr=subprocess.STDOUT,
             start_new_session=True

@@ -24,7 +24,7 @@ if PID_FILE.exists():
         # Verifier si le processus existe
         os.kill(old_pid, 0)
         print(f"Dagster est deja en cours d execution (PID: {old_pid})")
-        print(f"Utilisez dagster-stop.py pour l arreter d abord.")
+        print(f"Utilisez dagster-run-process-sample-stop.py pour l arreter d abord.")
         sys.exit(1)
     except (OSError, ValueError):
         # Le processus n existe plus, supprimer le fichier PID
@@ -35,7 +35,7 @@ print(f"Interface UI disponible sur: http://localhost:3001")
 print(f"Logs: {LOG_FILE}")
 print()
 print("Dagster sera lance en arriere-plan (port 3001).")
-print("Utilisez dagster-stop.py pour l arreter.")
+print("Utilisez dagster-run-process-sample-stop.py pour l arreter.")
 print()
 
 try:
