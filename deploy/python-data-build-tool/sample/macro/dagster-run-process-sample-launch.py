@@ -4,6 +4,7 @@
 import subprocess
 import sys
 import os
+import time
 from pathlib import Path
 
 # Chemin automatique vers le fichier dagster-run-process-sample.py
@@ -54,6 +55,21 @@ try:
     
     print(f"✓ Dagster lance avec succes (PID: {process.pid})")
     print(f"✓ Vous pouvez fermer ce terminal en toute securite.")
+    
+    # Attendre que Dagster soit pret
+    print("⏳ Attente du demarrage de Dagster...")
+    time.sleep(3)
+    
+    # Ouvrir l'interface dans le navigateur par défaut
+    try:
+        import webbrowser
+        webbrowser.open("http://127.0.0.1:3001/asset-groups")
+        print("✓ Interface Dagster Sample ouverte dans le navigateur")
+        print("   Pour ouvrir dans VS Code: Cmd+Shift+P > 'Simple Browser: Show'")
+        print(f"   puis entrez: http://127.0.0.1:3001/asset-groups")
+    except Exception as e:
+        print(f"Note: Impossible d'ouvrir le navigateur automatiquement: {e}")
+        print(f"Ouvrez manuellement: http://127.0.0.1:3001/asset-groups")
     
 except FileNotFoundError:
     print("Erreur: dagster n est pas installe.")
