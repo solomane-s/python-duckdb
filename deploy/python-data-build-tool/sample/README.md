@@ -5,6 +5,12 @@ Ce projet permet de gérer un flux complet de données depuis l'import de fichie
 Il inclut la transformation et l'agrégation des données pour obtenir des résultats prêts à l'analyse.
 Les résultats finaux peuvent être exportés pour usage externe.
 
+## Configuration de la base de données
+
+**Type de base de données:** DuckDB
+**Fichier:** database.duckdb
+**Module:** duckdb
+
 ## Démarrage rapide
 
 ### Exécution classique (manuelle)
@@ -15,7 +21,7 @@ python3 python-run-process.py
 
 ### Orchestration avec Dagster
 ```bash
-# Lancer l'interface web principale (port 3000)
+# Lancer l'interface web principale (ports selon DB: 3000 DuckDB, 4000 SQLite, 5000 Commune)
 cd macro/
 python3 dagster-run-process-launch.py
 
@@ -24,40 +30,44 @@ cd sample/macro/
 python3 dagster-run-process-sample-launch.py
 
 # Arrêter Dagster
-python3 dagster-stop.py
+# Pour le principal:
+python3 dagster-run-process-stop.py
+
+# Pour le sample:
+python3 dagster-run-process-sample-stop.py
 ```
 
-**Interfaces web:**
-- Principal: http://localhost:3000
-- Sample: http://localhost:3001
+**Interfaces web selon le type de base de données:**
+- **DuckDB**: Principal (http://localhost:3000), Sample (http://localhost:3001)
+- **SQLite**: Principal (http://localhost:4000), Sample (http://localhost:4001)
+- **Database Commune**: Principal (http://localhost:5000), Sample (http://localhost:5001)
 
 ## Architecture du flux de données
 
 ```
-    CSV Files               DuckDB Database              CSV Files
-    (Source)                  (Processing)                (Output)
-       │                          │                          │
-       │                          │                          │
-       ▼                          ▼                          ▼
-  ┌─────────┐              ┌────────────┐            ┌──────────┐
-  │ data/   │   source.py  │database.   │  results.py│  data/   │
-  │ source/ │─────────────▶│  duckdb    │───────────▶│processed/│
-  │         │   (import)   │            │  (export)  │  final/  │
-  │ *.csv   │              │  Tables:   │            │  *.csv   │
-  └─────────┘              │  - SOURCE  │            └──────────┘
-                           │  - TRANS.  │
-                           │  - SUMMARY │
-                           └────────────┘
-                                 │
-                                 │ transforming.py
-                                 │ (transform & aggregate)
-                                 ▼
-                           ┌────────────┐
-                           │   Python   │
-                           │  + Pandas  │
-                           │  + DuckDB  │
-                           │  (Engine)  │
-                           └────────────┘
+    CSV Files                  Database                    CSV Files
+    (Source)                 (Processing)                  (Output)
+        │                          │                           │
+        │                          │                           │
+        ▼                          ▼                           ▼
+  ┌─────────┐              ┌──────────────┐              ┌──────────┐
+  │ data/   │   source.py  │   Database   │  results.py  │  data/   │
+  │ source/ │─────────────▶│              │─────────────▶│processed/│
+  │         │   (import)   │   Tables:    │   (export)   │  final/  │
+  │ *.csv   │              │   - SOURCE   │              │  *.csv   │
+  └─────────┘              │   - TRANS.   │              └──────────┘
+                           │   - SUMMARY  │
+                           └──────────────┘
+                                   │
+                                   │ transforming.py
+                                   │ (transform & aggregate)
+                                   ▼
+                           ┌──────────────┐
+                           │    Python    │
+                           │   + Pandas   │
+                           │   + duckdb   │
+                           │   (Engine)   │
+                           └──────────────┘
 ```
 
 ## Structure du projet
@@ -70,7 +80,7 @@ project/
 │   └── final/              Données finales ou résultats finaux
 │
 ├── db/                     
-│   └── database.duckdb     Base de données DuckDB principale du projet
+│   └── database.duckdb     Base de données principale du projet
 │
 ├── scripts/                
 │   ├── source.py           Script d'import des données depuis les fichiers sources
@@ -80,8 +90,8 @@ project/
 ├── macro/                  Scripts d'orchestration
 │   ├── python-run-process.py              Exécution classique du pipeline
 │   ├── dagster-run-process.py             Définition Dagster du pipeline
-│   ├── dagster-run-process-launch.py      Lancement de Dagster (port 3000)
-│   ├── dagster-stop.py                    Arrêt de tous les processus Dagster
+│   ├── dagster-run-process-launch.py      Lancement de Dagster (port selon DB)
+│   ├── dagster-run-process-stop.py        Arrêt du processus principal
 │   ├── dagster.log                        Logs Dagster
 │   ├── dagster.pid                        PID du processus Dagster
 │   └── execution.log                      Logs d'exécution du pipeline
@@ -99,7 +109,7 @@ project/
 │       └── dagster-run-process-sample-launch.py (port 3001)
 │
 ├── requirements.txt        Dépendances: pandas, duckdb, dagster, dagster-webserver
-├── python-duckdb.py        Générateur de structure de projet
+├── python-data-build-tool.py        Générateur de structure de projet
 └── README.md               Cette documentation
 ```
 
@@ -136,11 +146,18 @@ Lance Dagster en arrière-plan avec:
 - Logs redirigés vers `dagster.log`
 - Survit à la fermeture du terminal
 
-### dagster-stop.py
-Arrête tous les processus Dagster:
-- Kill de tous les processus `dagster dev`
+### dagster-run-process-stop.py / dagster-run-process-sample-stop.py
+Arrête le processus Dagster spécifique:
+- `dagster-run-process-stop.py`: Arrête le processus principal (port selon DB)
+- `dagster-run-process-sample-stop.py`: Arrête le processus sample (port selon DB)
+- Kill du processus sur le port concerné uniquement
 - Nettoyage des fichiers PID
 - Vérification de l'arrêt complet
+
+**Ports par type de base de données:**
+- DuckDB: 3000 (principal), 3001 (sample)
+- SQLite: 4000 (principal), 4001 (sample)  
+- Database Commune: 5000 (principal), 5001 (sample)
 
 ## Installation
 
@@ -170,12 +187,21 @@ python3 dagster-run-process-sample-launch.py
 
 Données d'exemple: `sample/data/source/SAMPLE_DATA.csv`
 
-## Ports réseau
+## Ports réseau par type de base de données
 
-- **Principal**: Port 3000 (http://localhost:3000)
-- **Sample**: Port 3001 (http://localhost:3001)
+**DuckDB:**
+- Principal: Port 3000 (http://localhost:3000)
+- Sample: Port 3001 (http://localhost:3001)
 
-Les deux instances peuvent fonctionner simultanément sans conflit.
+**SQLite:**
+- Principal: Port 4000 (http://localhost:4000)
+- Sample: Port 4001 (http://localhost:4001)
+
+**Database Commune:**
+- Principal: Port 5000 (http://localhost:5000)
+- Sample: Port 5001 (http://localhost:5001)
+
+Les six instances peuvent fonctionner simultanément sans conflit.
 
 ## Logs
 

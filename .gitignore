@@ -1,6 +1,23 @@
-/*
-!/deploy/
-!/.gitignore
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Données temporaires
+*.log
+*.pid
+
+# Bases de données générées (optionnel, décommenter si besoin)
+# *.duckdb
+# *.sqlite
+# *.db

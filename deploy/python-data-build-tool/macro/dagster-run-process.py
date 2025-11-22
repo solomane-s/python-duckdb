@@ -1,5 +1,5 @@
 """
-Orchestration Dagster pour le pipeline python-duckdb principal
+Orchestration Dagster pour le pipeline python-data-build-tool principal
 Lance le processus toutes les 5 minutes
 """
 
@@ -15,14 +15,14 @@ from dagster import (
     AssetExecutionContext,
 )
 
-# Chemin de base
-BASE_DIR = Path(__file__).resolve().parent
+# Chemin de base - Le fichier est dans macro/, on remonte au parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 SCRIPTS_DIR = BASE_DIR / "scripts"
 
 
 @asset(group_name="main_pipeline")
 def import_data(context: AssetExecutionContext) -> dict:
-    """Import des données sources vers DuckDB"""
+    """Import des données sources vers la base de données"""
     context.log.info("Début de l'import des données")
     
     sys.path.insert(0, str(SCRIPTS_DIR))

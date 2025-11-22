@@ -1,4 +1,4 @@
 pandas
-duckdb
 dagster
 dagster-webserver
+duckdb
