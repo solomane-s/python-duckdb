@@ -17,6 +17,9 @@ Thumbs.db
 *.log
 *.pid
 
+# Archive
+archive/
+
 # Bases de données générées (optionnel, décommenter si besoin)
 # *.duckdb
 # *.sqlite

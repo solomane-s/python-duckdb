@@ -47,8 +47,16 @@ CSV Source → Import → Database → Transform → Export → CSV Final
 - **test/** : Environnement de test
 - **prod/** : Environnement de production
 - **deploy/** : Déploiement final
+- **archive/** : Archives horodatées du projet
 
 ## 🚀 Utilisation
+
+### Génération initiale du projet
+
+```bash
+# Créer la structure de base
+python3 python-data-build-tool.py
+```
 
 ### Génération d'un environnement
 
@@ -64,6 +72,18 @@ python3 update-test.py
 # Production avec Database Commune
 python3 update-prod.py
 # Choix: 3
+
+# Déploiement
+python3 update-deploy.py
+# Choix: 1, 2 ou 3
+```
+
+### Archivage du projet
+
+```bash
+# Créer une archive horodatée
+python3 update-archive.py
+# Archive créée dans: archive/archive - YYYY-MM-DD HH:MM:SS/
 ```
 
 ### Démarrage du pipeline
@@ -126,7 +146,14 @@ Installation automatique proposée au lancement.
 
 ## 🛠️ Architecture technique
 
-- **Générateur** : `python-data-build-tool.py` (1742 lignes)
+- **Générateur** : `python-data-build-tool.py` - Script principal de génération
+- **Scripts de mise à jour** :
+  - `update-dev.py` - Mise à jour environnement dev
+  - `update-test.py` - Mise à jour environnement test
+  - `update-prod.py` - Mise à jour environnement prod
+  - `update-deploy.py` - Mise à jour déploiement
+  - `update-archive.py` - Création d'archives horodatées
 - **Templates dynamiques** : Génération avec f-strings et ports configurables
 - **Gestion de processus** : `lsof` pour détection de ports, PID files pour tracking
 - **Assets Dagster** : Chaque étape ETL est un asset orchestré
+- **Archivage automatique** : Sauvegarde horodatée de tous les fichiers du projet
